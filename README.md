@@ -69,19 +69,19 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime, timedelta
 
-def process_and_visualize_steps(file_path, device_name):
+def process_and_visualize_steps(file_path, device_name, source_filter):
     def parse_time(time_str):
         return datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S %z")
 
     try:
         tree = ET.parse(file_path)
-        records = tree.findall(".//Record[@type='HKQuantityTypeIdentifierStepCount' "
-                              f"][@sourceName='{device_name}']")
+        records = tree.findall(f".//Record[@type='HKQuantityTypeIdentifierStepCount'][@sourceName='{source_filter}']")
     except Exception as e:
         print(f"Error: {e}")
         return pd.DataFrame()
 
     minute_data = {}
+    start_date_filter = datetime(2024, 11, 1)  # Only consider steps after Nov 1, 2024
 
     for record in records:
         try:
@@ -89,7 +89,7 @@ def process_and_visualize_steps(file_path, device_name):
             start = parse_time(record.get('startDate'))
             end = parse_time(record.get('endDate'))
 
-            if start >= end:
+            if start >= end or start < start_date_filter.replace(tzinfo=start.tzinfo):
                 continue
 
             total_seconds = (end - start).total_seconds()
@@ -106,11 +106,7 @@ def process_and_visualize_steps(file_path, device_name):
                 if overlap_seconds > 0:
                     minute_key = current_min
                     step_contribution = steps * (overlap_seconds / total_seconds)
-
-                    if minute_key in minute_data:
-                        minute_data[minute_key] += step_contribution
-                    else:
-                        minute_data[minute_key] = step_contribution
+                    minute_data[minute_key] = minute_data.get(minute_key, 0) + step_contribution
 
                 current_min = next_min
 
@@ -128,7 +124,7 @@ def process_and_visualize_steps(file_path, device_name):
     labels = ['<100', '100-150', '150-180', '180-200', '200+']
     df['Category'] = pd.cut(df['Steps'], bins=bins, labels=labels, right=False)
 
-    df.to_csv(f"{device_name}.csv", index=False)
+    df.to_csv(f"{device_name}_{source_filter}.csv", index=False)
 
     threshold = 180
     high_spm_duration = 30
@@ -139,12 +135,11 @@ def process_and_visualize_steps(file_path, device_name):
             if (df['Minute'].iloc[i] - df['Minute'].iloc[i-1]).total_seconds() >= high_spm_duration:
                 abnormal_activity_intervals.append(df['Minute'].iloc[i])
 
-    print(f"Abnormal Activity (SPM > 180 for 30 seconds or more): {len(abnormal_activity_intervals)} occurrences")
+    print(f"{source_filter} - Abnormal Activity (SPM > 180 for 30 seconds or more): {len(abnormal_activity_intervals)} occurrences")
 
     abnormal_df = df[df['Minute'].isin(abnormal_activity_intervals)]
 
-    plt.figure(figsize=(8, 4))  # Adjust width and height as needed
-
+    plt.figure(figsize=(8, 4))
     ax = sns.barplot(x='Minute', y='Steps', data=abnormal_df, palette='Reds')
 
     for p in ax.patches:
@@ -153,26 +148,34 @@ def process_and_visualize_steps(file_path, device_name):
                         ha='center', va='center', fontsize=8, color='black', xytext=(0, 5),
                         textcoords='offset points')
 
-    plt.title('Abnormal Activity (SPM > 180 for 30 seconds or more)', fontsize=16)
-    plt.xlabel('Time (Minute Intervals)', fontsize=12)
-    plt.ylabel('Steps per Minute', fontsize=12)
-    plt.xticks(rotation=45)
+    plt.title(f'Abnormal Activity ({source_filter})', fontsize=14)
+    plt.xlabel('Time (Minute Intervals)', fontsize=10)
+    plt.ylabel('Steps per Minute', fontsize=10)
+    plt.xticks(rotation=30)
     plt.tight_layout()
-    plt.savefig(f'{device_name}_abnormal_activity.png', bbox_inches='tight')
+    plt.savefig(f'{device_name}_{source_filter}_abnormal_activity.png', bbox_inches='tight')
     plt.show()
 
     return df
 
 file_path = "/content/health_data/apple_health_export/export.xml"
-device_name = "Your Apple Watch Name"
 
-processed_data = process_and_visualize_steps(file_path, device_name)
-
-if not processed_data.empty:
-    print("\nCategory Distribution:")
-    print(processed_data['Category'].value_counts().sort_index())
+# Process Apple Watch steps
+watch_data = process_and_visualize_steps(file_path, device_name, "Manish Singh’s Apple Watch")
+if not watch_data.empty:
+    print("\nApple Watch - Category Distribution:")
+    print(watch_data['Category'].value_counts().sort_index())
 else:
-    print("No step data found")
+    print("No Apple Watch step data found")
+
+# Process iPhone steps
+iphone_data = process_and_visualize_steps(file_path, device_name, "iPhone")
+if not iphone_data.empty:
+    print("\niPhone - Category Distribution:")
+    print(iphone_data['Category'].value_counts().sort_index())
+else:
+    print("No iPhone step data found")
+
 ```
 
 ---
