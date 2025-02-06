@@ -143,7 +143,8 @@ def process_and_visualize_steps(file_path, device_name):
 
     abnormal_df = df[df['Minute'].isin(abnormal_activity_intervals)]
 
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(8, 4))  # Adjust width and height as needed
+
     ax = sns.barplot(x='Minute', y='Steps', data=abnormal_df, palette='Reds')
 
     for p in ax.patches:
@@ -168,8 +169,6 @@ device_name = "Manish Singh’s Apple Watch"
 processed_data = process_and_visualize_steps(file_path, device_name)
 
 if not processed_data.empty:
-    print("\nCategorized Step Data:")
-    print(processed_data)
     print("\nCategory Distribution:")
     print(processed_data['Category'].value_counts().sort_index())
 else:
