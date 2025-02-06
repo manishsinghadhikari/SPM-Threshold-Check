@@ -162,10 +162,18 @@ def process_and_visualize_steps(file_path, device_name):
 
     return df
 
-file_path = "/content/export/health_data/apple_health_export/export.xml"
-device_name = "Manish Singh’s Apple Watch"
+file_path = "/content/health_data/apple_health_export/export.xml"
+device_name = "Manish Singh’s Apple Watch"
 
 processed_data = process_and_visualize_steps(file_path, device_name)
+
+if not processed_data.empty:
+    print("\nCategorized Step Data:")
+    print(processed_data)
+    print("\nCategory Distribution:")
+    print(processed_data['Category'].value_counts().sort_index())
+else:
+    print("No step data found")
 ```
 
 ---
