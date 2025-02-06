@@ -162,7 +162,7 @@ def process_and_visualize_steps(file_path, device_name):
 
     return df
 
-file_path = "/content/health_data/export.xml"
+file_path = "/content/export/health_data/apple_health_export/export.xml"
 device_name = "Manish Singh’s Apple Watch"
 
 processed_data = process_and_visualize_steps(file_path, device_name)
